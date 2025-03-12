@@ -8,9 +8,17 @@ import json
 import os
 from bot_token import token
 import help_str
+import asyncio
 
-prefix = ".."
-bot = commands.Bot(command_prefix=prefix, description='WordWatch Bot')
+""" 
+Migration to new version of discord.py 
+-> Server is now called Guild: https://discordpy.readthedocs.io/en/stable/migrating_to_v1.html?highlight=server%20id#server-is-now-guild
+"""
+
+prefix = "!"
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix=prefix, description='WordWatch Bot', intents = discord.Intents.default())
 bot.remove_command('help')  # removes default help command!
 
 # Const attributes
@@ -43,7 +51,12 @@ async def on_ready():
         print("Data loaded successfully.")
     else:
         print("No data files provided or one was missing. No user data loaded.")
-    await bot.change_presence(game=discord.Game(name="Questions? Type {prefix}help".format(prefix=bot.prefix)))
+    await bot.change_presence(activity=discord.Activity(name="Questions? Type {prefix}help".format(prefix=bot.prefix)))
+
+
+@bot.command() # This is the decorator we use to create a prefixed command.
+async def ping(ctx): # This is the function we will use to create the command.
+    await ctx.send("Pong!") # This is the response the bot will send.
 
 
 @bot.command(pass_context=True)
@@ -91,6 +104,7 @@ async def help(ctx):
     await bot.send_message(ctx.message.author, embed=embed)
 
 
+
 def check_user(member: discord.Member):
     """Given a member, check if they are in the dictionary. if not, create one for them."""
     if member.id not in bot.user_words:
@@ -104,7 +118,7 @@ def check_server(member: discord.Member, server_id: str):
         bot.user_words[member.id][server_id] = dict()
 
 
-def ensure_valid_channels(member: discord.Member, server: discord.Server, word: str):
+def ensure_valid_channels(member: discord.Member, server: discord.Guild, word: str):
     """If a word's watched channel is nonxistent, removes it from the dict to prevent errors"""
     result = dict()
     # print("Server channels:", [x.id for x in server.channels])
@@ -556,5 +570,6 @@ async def botstop(ctx):
     print("Done.")
     await bot.logout()
 
-bot.loop.create_task(save_json())
+loop = asyncio.get_event_loop()
+loop.create_task(save_json())
 bot.run(token)
